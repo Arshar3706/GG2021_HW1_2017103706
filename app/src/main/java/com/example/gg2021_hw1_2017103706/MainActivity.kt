@@ -49,15 +49,21 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
     private var viewMatrix = FloatArray(16)
     //P. model matrix & 매 프레임 변화 matrix 선언
     // Model Matrix
+    // Cube.OBJ
     private var cubeMatrix = FloatArray(16)
     private var cubeMVMatrix = FloatArray(16)
     private var cubeMVPMatrix = FloatArray(16)
-
+    // Person.OBJ
     private var personMatrix = FloatArray(16)
+    private var personMVMatrix = FloatArray(16)
+    private var personMVPMatrix = FloatArray(16)
+    // Teapot.OBJ
     private var teapotMatrix = FloatArray(16)
+    private var teapotMVMatrix = FloatArray(16)
+    private var teapotMVPMatrix = FloatArray(16)
+
     // 매 프레임 변화 Matrix
     private var scaleMatrix = FloatArray(16)
-    private var rotateMatrix = FloatArray(16)
     private var rotationMatrix = FloatArray(16)
 
     //P. object 선언
@@ -65,8 +71,8 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
     private lateinit var person: Object
     private lateinit var teapot: Object
 
-    // Frame마다 증가시키기 위해 추가하는 변수입니다.
-    var time = 0f;
+    //C.테스트용 Identity Matrix
+    private val identityMatrix = FloatArray(16)
 
     override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -78,67 +84,47 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
         //P. model matrix & 매 프레임 변화 matrix 초기화
         // Model Matrix 초기화
         cubeMatrix[0] = 0.5f; cubeMatrix[5] = 1f; cubeMatrix[10] = 0.5f; cubeMatrix[15] = 1f;
-        personMatrix[0] = 1f; personMatrix[3] = 2f; personMatrix[5] = 1f; personMatrix[7] = 0f; personMatrix[10] = 1f; personMatrix[11] =0f; personMatrix[15] = 1f;
-        teapotMatrix[0] = -0.2f; teapotMatrix[3] = 1.25f; teapotMatrix[5] = 0.2f; teapotMatrix[7] = 0.4f; teapotMatrix[10] = -0.2f; teapotMatrix[15] = 1f;
-
+        // Android Matrix의 특징인가? 열벡터 기준임
+        personMatrix[0] = 1f; personMatrix[5] = 1f; personMatrix[10] = 1f; personMatrix[12] = 2f;personMatrix[15] = 1f;
+        teapotMatrix[0] = -0.2f; teapotMatrix[5] = 0.2f; teapotMatrix[10] = -0.2f; teapotMatrix[12] = 1.25f; teapotMatrix[13] = 0.4f; teapotMatrix[15] = 1f;
 
         // 매 프레임 변화 Matrix 초기화
         scaleMatrix[0] = 1.001f; scaleMatrix[5] = 1.002f; scaleMatrix[10] = 1.001f; scaleMatrix[15] = 1f;
-        rotateMatrix[0] = cos(0.0139626f); rotateMatrix[2] = sin(0.0139626f); rotateMatrix[5] = 1f; rotateMatrix[8] = sin(0.0139626f); rotateMatrix[10] = cos(0.0139626f); rotateMatrix[15] = 1f;
+        rotationMatrix[0] = cos(0.0139626f); rotationMatrix[2] = sin(0.0139626f); rotationMatrix[5] = 1f; rotationMatrix[8] = -sin(0.0139626f); rotationMatrix[10] = cos(0.0139626f); rotationMatrix[15] = 1f;
     }
 
     override fun onDrawFrame(p0: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-        // scratch 의미가 약간 순수하다. 그런 늬앙스래
-        val scratchPerson = FloatArray(16)
-        val scratchTeapot = FloatArray(16)
 
         //P. 아래 구현한 mySetLookAtM function 으로 수정
         Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
 
         //P. 각 object 별 매 프레임 변화 matrix 와 model matrix 를 multiply
+        // Cube
         if(cubeMatrix[5] < 3.0f)
         {
             Matrix.multiplyMM(cubeMatrix, 0, scaleMatrix, 0, cubeMatrix, 0)
         }
-
-        /*
-        Matrix.multiplyMM(cubeMatrix, 0, scaleMatrix, 0, cubeMatrix, 0)
-        Matrix.multiplyMM(personMatrix, 0, rotateMatrix, 0, personMatrix, 0)
-        Matrix.multiplyMM(teapotMatrix, 0, rotateMatrix, 0, teapotMatrix, 0)
-
-        Matrix.multiplyMM(scaleMatrix, 0, scaleMatrix, 0, scaleMatrix, 0)
-        Matrix.multiplyMM(rotateMatrix, 0, rotateMatrix, 0, rotateMatrix, 0)
-         */
-
-        // rotate를 위한 작업
-        val angle = 0.800f * time.toInt()
-        /* time 초기화 해주려고 했는데 일단 제외
-        if(angle > 360)
-        {
-            time = 0f;
-        }
-        */
-        // angle : 움직일 각, 그리고 적용할 축에 1.0f
-        Matrix.setRotateM(rotationMatrix, 0, angle, 0f, -1.0f, 0f)
+        // Person
+        Matrix.multiplyMM(personMatrix, 0, rotationMatrix, 0, personMatrix, 0)
+        // Teapot
+        Matrix.multiplyMM(teapotMatrix, 0, rotationMatrix, 0, teapotMatrix, 0)
 
         // 시야에 넣는 작업
-        // Cube 먼저
-        // cubeMatrix[0] = 0.5f; cubeMatrix[5] = 1f; cubeMatrix[10] = 0.5f; cubeMatrix[15] = 1f;
+        // Cube
         Matrix.multiplyMM(cubeMVMatrix, 0, viewMatrix, 0, cubeMatrix, 0)
         Matrix.multiplyMM(cubeMVPMatrix, 0, projectionMatrix, 0, cubeMVMatrix, 0)
-
-        Matrix.multiplyMM(personMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-        Matrix.multiplyMM(teapotMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-
-        // rotate 적용
-        Matrix.multiplyMM(scratchTeapot, 0, teapotMatrix, 0, rotationMatrix, 0)
-        Matrix.multiplyMM(scratchPerson, 0, personMatrix, 0, rotationMatrix, 0)
+        // Person
+        Matrix.multiplyMM(personMVMatrix, 0, viewMatrix, 0, personMatrix, 0)
+        Matrix.multiplyMM(personMVPMatrix, 0, projectionMatrix, 0, personMVMatrix, 0)
+        // Teapot
+        Matrix.multiplyMM(teapotMVMatrix, 0, viewMatrix, 0, teapotMatrix, 0)
+        Matrix.multiplyMM(teapotMVPMatrix, 0, projectionMatrix, 0, teapotMVMatrix, 0)
 
         //P. object draw
         cube.draw(cubeMVPMatrix)
-        // person.draw(scratchPerson)
-        // teapot.draw(scratchTeapot)
+        person.draw(personMVPMatrix)
+        teapot.draw(teapotMVPMatrix)
     }
 
     override fun onSurfaceChanged(p0: GL10?, width: Int, height: Int) {

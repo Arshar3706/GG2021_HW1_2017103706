@@ -20,6 +20,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity() {
@@ -101,7 +102,8 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         //P. 아래 구현한 mySetLookAtM function 으로 수정
-        Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
+        // Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
+        mySetLookAtM(viewMatrix, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1f, 0f)
 
         /**
          * 오른쪽 행렬부터 곱하고, 왼쪽 행렬을 곱해서 결과값을 전달함, 오른쪽에서 왼쪽으로 읽는다 생각하면 될듯?
@@ -151,7 +153,6 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
     }
 }
 
-//P. vecNormalize function 구현: 벡터 정규화 함수 (mySetLookAtM function 구현 시 사용)
 /**
  * Kotlin에서 함수 쓰는 법은 일단 검색하고...
  * Kotlin 함수의 특징은 파라미터가 자동으로 val로 지정됨
@@ -160,12 +161,71 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
  * 기본적으로 두 개는 Pair, 세 개는 Triple을 사용하며, 접근은 .first, .second, .third 이렇게 함
  * 아니면 list로 만들 수도 있음
  */
-fun vecNormalize(tempX: Float, tempY: Float, tempZ: Float)
+//P. vecNormalize function 구현: 벡터 정규화 함수 (mySetLookAtM function 구현 시 사용)
+fun vecNormalize(tempX: Float, tempY: Float, tempZ: Float): Triple<Float, Float, Float>
 {
+    val vectorLength = sqrt(tempX*tempX + tempY*tempY + tempZ*tempZ)
+
+    val normalX = tempX/vectorLength
+    val normalY = tempY/vectorLength
+    val normalZ = tempZ/vectorLength
+
+    // return 내에 식 쓸 수 있긴 한데, 이게 좀 더 보기 편해서
+    return Triple(normalX, normalY, normalZ)
 
 }
 
 //P. mySetLookAtM function 구현: viewMatrix 구하는 함수 (Matrix library function 중 multiplyMM 만 사용 가능)
+fun mySetLookAtM(tempMatrix: FloatArray ,eyeX: Float, eyeY: Float, eyeZ: Float, atX: Float, atY: Float, atZ: Float, upX: Float, upY: Float, upZ: Float)
+{
+    // Basis n 만들기
+    // Camera의 위치에서 at을 뺀다.
+    var nX = atX - eyeX
+    var nY = atY - eyeY
+    var nZ = atZ - eyeZ
+
+    // 뺀 결과를 Normalize
+    val normalizeN = vecNormalize(nX, nY, nZ)
+    nX = normalizeN.first
+    nY = normalizeN.second
+    nZ = normalizeN.third
+
+    // Basis u 만들기
+    // n과 Up을 외적
+    var uX = upY*nZ - upZ*nY
+    var uY = upZ*nX - upX*nZ
+    var uZ = upX*nY - upY*nX
+
+    // 외적의 결과를 Normalize
+    val normalizeU = vecNormalize(uX, uY, uZ)
+    uX = normalizeU.first
+    uY = normalizeU.second
+    uZ = normalizeU.third
+
+    // Basis v 만들기
+    // u와 n을 외적
+    var vX = nY*uZ - nZ*uY
+    var vY = nZ*uX - nX*uZ
+    var vZ = nX*uY - nY*uX
+
+    // View Transform 만들기
+    tempMatrix[0] = uX
+    tempMatrix[1] = -vX
+    tempMatrix[2] = nX
+    tempMatrix[3] = 0.0f
+    tempMatrix[4] = uY
+    tempMatrix[5] = -vY
+    tempMatrix[6] = nY
+    tempMatrix[7] = 0.0f
+    tempMatrix[8] = uZ
+    tempMatrix[9] = -vZ
+    tempMatrix[10] = nZ
+    tempMatrix[11] = 0.0f
+    tempMatrix[12] = -(uX*eyeX + uY*eyeY + uZ*eyeZ)
+    tempMatrix[13] = -(vX*eyeX + vY*eyeY + vZ*eyeZ)
+    tempMatrix[14] = -(nX*eyeX + nY*eyeY + nZ*eyeZ)
+    tempMatrix[15] = 1.0f
+}
 
 //P. myFrustumM function 구현: projectionMatrix 구하는 함수 (Matrix library function 중 multiplyMM 만 사용 가능)
 

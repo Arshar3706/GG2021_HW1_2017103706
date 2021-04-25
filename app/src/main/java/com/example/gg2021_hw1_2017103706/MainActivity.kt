@@ -84,7 +84,11 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
         //P. model matrix & 매 프레임 변화 matrix 초기화
         // Model Matrix 초기화
         cubeMatrix[0] = 0.5f; cubeMatrix[5] = 1f; cubeMatrix[10] = 0.5f; cubeMatrix[15] = 1f;
-        // Android Matrix의 특징인가? 열벡터 기준임
+        /**
+         * JAVA Matrix의 특징인가? 열벡터 기준임
+         * Matrices are 4 x 4 column-vector matrices stored in column-major order
+         * ...
+         */
         personMatrix[0] = 1f; personMatrix[5] = 1f; personMatrix[10] = 1f; personMatrix[12] = 2f;personMatrix[15] = 1f;
         teapotMatrix[0] = -0.2f; teapotMatrix[5] = 0.2f; teapotMatrix[10] = -0.2f; teapotMatrix[12] = 1.25f; teapotMatrix[13] = 0.4f; teapotMatrix[15] = 1f;
 
@@ -99,6 +103,10 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
         //P. 아래 구현한 mySetLookAtM function 으로 수정
         Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
 
+        /**
+         * 오른쪽 행렬부터 곱하고, 왼쪽 행렬을 곱해서 결과값을 전달함, 오른쪽에서 왼쪽으로 읽는다 생각하면 될듯?
+         * Offset은 해당 행렬에서 시작 지점
+         */
         //P. 각 object 별 매 프레임 변화 matrix 와 model matrix 를 multiply
         // Cube
         if(cubeMatrix[5] < 3.0f)
@@ -110,7 +118,13 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
         // Teapot
         Matrix.multiplyMM(teapotMatrix, 0, rotationMatrix, 0, teapotMatrix, 0)
 
-        // 시야에 넣는 작업
+        /**
+         * 정리할 겸 써 봅니다.
+         * 시야에 넣는 작업이다.
+         * 첫 번째는 World Space 내에 있는 Objec를 Camera Space로 옮기기 위한 View Transform (결과값 = MV Matrix)
+         * 두 번째는 그렇게 옮겨온 Objec를 Frustum Space로 옮기는 Projection Transform (결과값 = MVP Matrix), 참고로 Frustum의 의미는 '절두체'이고, 그 강의에서 자주 본 형태를 말하는겅
+         * Object Space에서 World Space로 옮기는 World Transform도 있지만, 그건 초기화에서 이미 했고 편의상 그냥 표시함
+         */
         // Cube
         Matrix.multiplyMM(cubeMVMatrix, 0, viewMatrix, 0, cubeMatrix, 0)
         Matrix.multiplyMM(cubeMVPMatrix, 0, projectionMatrix, 0, cubeMVMatrix, 0)
@@ -138,6 +152,18 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
 }
 
 //P. vecNormalize function 구현: 벡터 정규화 함수 (mySetLookAtM function 구현 시 사용)
+/**
+ * Kotlin에서 함수 쓰는 법은 일단 검색하고...
+ * Kotlin 함수의 특징은 파라미터가 자동으로 val로 지정됨
+ * 따라서 파라미터로 받은 값을 함수 내부에서 수정하는 것도 불가능 = Reference로 반환 당연히 안됨
+ * 대신 DataClass를 활용하여 여러 개의 값을 반환할 수 있다.
+ * 기본적으로 두 개는 Pair, 세 개는 Triple을 사용하며, 접근은 .first, .second, .third 이렇게 함
+ * 아니면 list로 만들 수도 있음
+ */
+fun vecNormalize(tempX: Float, tempY: Float, tempZ: Float)
+{
+
+}
 
 //P. mySetLookAtM function 구현: viewMatrix 구하는 함수 (Matrix library function 중 multiplyMM 만 사용 가능)
 

@@ -11,6 +11,9 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.graphics.rotationMatrix
+import java.io.BufferedReader
+import java.io.IOException
+import java.io.InputStreamReader
 import java.lang.Exception
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -291,7 +294,7 @@ fun myFrustumM(tempMatrix: FloatArray, aspect: Float, fov: Float, near: Float, f
 
 
 //PP. cube, person, teapot 모두 포함할 수 있는 Object class 로 수정
-class Object(context: Context, fileName: String){
+class Object(context: Context, fileName: String) {
 
     //P. 아래 shader code string 지우고, res/raw 에 위치한 vertex.glsl , fragment.glsl 로드해서 vertexShaderCode, fragmentShaderCode 에 넣기
     private val vertexShaderCode =
@@ -308,8 +311,13 @@ class Object(context: Context, fileName: String){
                     "  gl_FragColor = vColor;" +
                     "}"
 
+    // 여기서부터 오류임
+    private val idVertex = context.resources.getIdentifier("res/vertex.glsl", null, context.packageName)
+    private val idFragment = context.resources.getIdentifier("res/fragment.glsl", null, context.packageName)
+
     //P. model matrix handle 변수 추가 선언
     private var vPMatrixHandle: Int = 0
+    private var modelMatrixHandle: String = fileName
 
     val color = floatArrayOf(1.0f, 0.980392f, 0.980392f, 0.3f)
 
@@ -321,11 +329,15 @@ class Object(context: Context, fileName: String){
     private lateinit var facesBuffer: ShortBuffer
 
     init {
+
+        val tempVertexShaderCode = loadFile(context, idVertex)
+        val tempFragmentShaderCode = loadFile(context, idFragment)
+
         try {
-            val scanner = Scanner(context.assets.open(fileName))
-            while (scanner.hasNextLine()){
+            val scanner = Scanner(context.assets.open(modelMatrixHandle))
+            while (scanner.hasNextLine()) {
                 val line = scanner.nextLine()
-                if (line.startsWith("v  ")){
+                if (line.startsWith("v  ")) {
                     val vertex = line.split(" ")
                     val x = vertex[2].toFloat()
                     val y = vertex[3].toFloat()
@@ -333,8 +345,7 @@ class Object(context: Context, fileName: String){
                     vertices.add(x)
                     vertices.add(y)
                     vertices.add(z)
-                }
-                else if (line.startsWith("f ")) {
+                } else if (line.startsWith("f ")) {
                     val face = line.split(" ")
                     val vertex1 = face[1].split("/")[0].toShort()
                     val vertex2 = face[2].split("/")[0].toShort()
@@ -348,7 +359,7 @@ class Object(context: Context, fileName: String){
             verticesBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run {
                 order(ByteOrder.nativeOrder())
                 asFloatBuffer().apply {
-                    for (vertex in vertices){
+                    for (vertex in vertices) {
                         put(vertex)
                     }
                     position(0)
@@ -358,18 +369,18 @@ class Object(context: Context, fileName: String){
             facesBuffer = ByteBuffer.allocateDirect(faces.size * 2).run {
                 order(ByteOrder.nativeOrder())
                 asShortBuffer().apply {
-                    for (face in faces){
-                        put((face-1).toShort())
+                    for (face in faces) {
+                        put((face - 1).toShort())
                     }
                     position(0)
                 }
             }
-        } catch (e: Exception){
+        } catch (e: Exception) {
             Log.e("file_read", e.message.toString())
         }
 
-        val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
-        val fragmentShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
+        val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, tempVertexShaderCode)
+        val fragmentShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, tempFragmentShaderCode)
 
         mProgram = GLES20.glCreateProgram().also {
             GLES20.glAttachShader(it, vertexShader)
@@ -386,7 +397,7 @@ class Object(context: Context, fileName: String){
     private val vertexStride: Int = COORDS_PER_VERTEX * 4
 
     //PP. cube, person, teapot 의 world transform 및 매 프레임 변화를 반영할 수 있는 draw function 으로 수정
-    fun draw(mvpMatrix: FloatArray){
+    fun draw(mvpMatrix: FloatArray) {
         GLES20.glUseProgram(mProgram)
 
         positionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition").also {
@@ -418,5 +429,19 @@ class Object(context: Context, fileName: String){
             GLES20.glShaderSource(shader, shaderCode)
             GLES20.glCompileShader(shader)
         }
+    }
+
+    private fun loadFile(context: Context, fileID: Int): String {
+        lateinit var tempLine: String
+        val scanner = Scanner(context.resources.openRawResource(fileID))
+        try {
+            while (scanner.hasNextLine()) {
+                val line = scanner.nextLine()
+                tempLine += line
+            }
+        } catch (e: Exception) {
+            Log.e("file_read", e.message.toString())
+        }
+        return tempLine
     }
 }

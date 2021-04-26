@@ -5,6 +5,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.opengl.Matrix.setIdentityM
+import android.opengl.Matrix.translateM
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.SystemClock
@@ -21,6 +22,7 @@ import javax.microedition.khronos.opengles.GL10
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.tan
 
 
 class MainActivity : AppCompatActivity() {
@@ -149,7 +151,8 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
         val ratio: Float = width.toFloat() / height.toFloat()
 
         //P.  아래 구현한 myFrustumM function 으로 수정
-        Matrix.frustumM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, 2f, 12f)
+        myFrustumM(projectionMatrix, ratio, 60f, 2f, 12f)
+        // Matrix.frustumM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, 2f, 12f)
     }
 }
 
@@ -176,31 +179,38 @@ fun vecNormalize(tempX: Float, tempY: Float, tempZ: Float): Triple<Float, Float,
 }
 
 //P. mySetLookAtM function 구현: viewMatrix 구하는 함수 (Matrix library function 중 multiplyMM 만 사용 가능)
-fun mySetLookAtM(tempMatrix: FloatArray ,eyeX: Float, eyeY: Float, eyeZ: Float, atX: Float, atY: Float, atZ: Float, upX: Float, upY: Float, upZ: Float)
+fun mySetLookAtM(tempMatrix: FloatArray, eyeX: Float, eyeY: Float, eyeZ: Float, atX: Float, atY: Float, atZ: Float, upX: Float, upY: Float, upZ: Float)
 {
     // Basis n 만들기
     // Camera의 위치에서 at을 뺀다.
-    var nX = atX - eyeX
-    var nY = atY - eyeY
-    var nZ = atZ - eyeZ
+    var nX = eyeX - atX
+    var nY = eyeY - atY
+    var nZ = eyeZ - atZ
+
 
     // 뺀 결과를 Normalize
-    val normalizeN = vecNormalize(nX, nY, nZ)
-    nX = normalizeN.first
-    nY = normalizeN.second
-    nZ = normalizeN.third
+    var normalizeF = vecNormalize(nX, nY, nZ)
+    nX = normalizeF.first
+    nY = normalizeF.second
+    nZ = normalizeF.third
 
+    /**
+     * Matrix 내장 함수에선 f가 focus(물체 방향)로 n이랑 방향이 반대다.
+     * 따라서 계산 방법도 많이 바뀌긴 하는데 내장 함수에서도 마지막에 -1을 곱해준다.
+     * 찾아보면 화면으로 나오는 방향이 n이 맞긴함
+     */
     // Basis u 만들기
+    //
     // n과 Up을 외적
     var uX = upY*nZ - upZ*nY
     var uY = upZ*nX - upX*nZ
     var uZ = upX*nY - upY*nX
 
     // 외적의 결과를 Normalize
-    val normalizeU = vecNormalize(uX, uY, uZ)
-    uX = normalizeU.first
-    uY = normalizeU.second
-    uZ = normalizeU.third
+    var normalizeS = vecNormalize(uX, uY, uZ)
+    uX = normalizeS.first
+    uY = normalizeS.second
+    uZ = normalizeS.third
 
     // Basis v 만들기
     // u와 n을 외적
@@ -210,17 +220,20 @@ fun mySetLookAtM(tempMatrix: FloatArray ,eyeX: Float, eyeY: Float, eyeZ: Float, 
 
     // View Transform 만들기
     tempMatrix[0] = uX
-    tempMatrix[1] = -vX
+    tempMatrix[1] = vX
     tempMatrix[2] = nX
     tempMatrix[3] = 0.0f
+
     tempMatrix[4] = uY
-    tempMatrix[5] = -vY
+    tempMatrix[5] = vY
     tempMatrix[6] = nY
     tempMatrix[7] = 0.0f
+
     tempMatrix[8] = uZ
-    tempMatrix[9] = -vZ
+    tempMatrix[9] = vZ
     tempMatrix[10] = nZ
     tempMatrix[11] = 0.0f
+
     tempMatrix[12] = -(uX*eyeX + uY*eyeY + uZ*eyeZ)
     tempMatrix[13] = -(vX*eyeX + vY*eyeY + vZ*eyeZ)
     tempMatrix[14] = -(nX*eyeX + nY*eyeY + nZ*eyeZ)
@@ -228,6 +241,42 @@ fun mySetLookAtM(tempMatrix: FloatArray ,eyeX: Float, eyeY: Float, eyeZ: Float, 
 }
 
 //P. myFrustumM function 구현: projectionMatrix 구하는 함수 (Matrix library function 중 multiplyMM 만 사용 가능)
+fun myFrustumM(tempMatrix: FloatArray, aspect: Float, fov: Float, near: Float, far: Float)
+{
+    /**
+     * 180 degrees = PI radians
+     * 1 degree = PI / 180 radians
+     * Math.PI
+     * but I use Math.toRadians(), it's parameter is double, and also, it returns double type.
+     */
+    val tempRadians = Math.toRadians(fov.toDouble())
+    val tempX = (1.0f/(aspect* tan(tempRadians/2))).toFloat()
+    val tempY = (1.0f/tan(tempRadians/2)).toFloat()
+    val tempM3 = far/(far-near)
+    val tempM4 = (far*near)/(far-near)
+
+    // Matrix 할당
+    tempMatrix[0] = tempX;
+    tempMatrix[1] = 0.0f;
+    tempMatrix[2] = 0.0f;
+    tempMatrix[3] = 0.0f;
+
+    tempMatrix[4] = 0.0f;
+    tempMatrix[5] = tempY;
+    tempMatrix[6] = 0.0f;
+    tempMatrix[7] = 0.0f;
+
+    tempMatrix[8] = 0.0f;
+    tempMatrix[9] = 0.0f;
+    tempMatrix[10] = tempM3;
+    // 기존의 Z 값 저장용이라고 한다. + NDC로 넘어오면 Z 축이 뒤집힌다고도 함. 그래서 Z가 크면 멀리 있는거
+    tempMatrix[11] = -1.0f;
+
+    tempMatrix[12] = 0.0f;
+    tempMatrix[13] = 0.0f;
+    tempMatrix[14] = tempM4;
+    tempMatrix[15] = 0.0f;
+}
 
 
 //PP. cube, person, teapot 모두 포함할 수 있는 Object class 로 수정

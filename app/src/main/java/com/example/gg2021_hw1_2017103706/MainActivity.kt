@@ -276,6 +276,17 @@ fun myFrustumM(tempMatrix: FloatArray, aspect: Float, fov: Float, near: Float, f
     tempMatrix[13] = 0.0f;
     tempMatrix[14] = tempM4;
     tempMatrix[15] = 0.0f;
+    /**
+     * 배운거 기록용
+     * View Transform을 통해 생성된 결과물을 EYE라고 했을 떄,
+     * Mprojection * (EYE) = (Clip)이 된다.
+     * 그니까, Near Plane으로 다 Projection 되는거지 = Z' 값은 어떤 점이든 같다. 대신, W 크기가 Z가 됨
+     * 여기까진 모든 점이 Near Plane 평면상에 존재하는거고,
+     * 이걸 NDC 공간으로 뿌려주는데,
+     * 그게 (Clip / W Clip)이다 = 이러면 homogeneous 값 W가 다시 1이 되고,
+     * Z가 컸던 애들 = 멀리 존재하던 애들의 Vertex 크기가 줄어든다 = 원근감에 맞게 NDC 공간으로 뿌려진다.
+     * 참고 : http://www.songho.ca/opengl/gl_projectionmatrix.html#perspective
+     */
 }
 
 

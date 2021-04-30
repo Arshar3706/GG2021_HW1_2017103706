@@ -53,20 +53,21 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
     private val mContext: Context = context
     private var projectionMatrix = FloatArray(16)
     private var viewMatrix = FloatArray(16)
+    private var vpMatrix = FloatArray(16)
     //P. model matrix & 매 프레임 변화 matrix 선언
     // Model Matrix
     // Cube.OBJ
     private var cubeMatrix = FloatArray(16)
-    private var cubeMVMatrix = FloatArray(16)
-    private var cubeMVPMatrix = FloatArray(16)
+    // private var cubeMVMatrix = FloatArray(16)
+    // private var cubeMVPMatrix = FloatArray(16)
     // Person.OBJ
     private var personMatrix = FloatArray(16)
-    private var personMVMatrix = FloatArray(16)
-    private var personMVPMatrix = FloatArray(16)
+    // private var personMVMatrix = FloatArray(16)
+    // private var personMVPMatrix = FloatArray(16)
     // Teapot.OBJ
     private var teapotMatrix = FloatArray(16)
-    private var teapotMVMatrix = FloatArray(16)
-    private var teapotMVPMatrix = FloatArray(16)
+    // private var teapotMVMatrix = FloatArray(16)
+    // private var teapotMVPMatrix = FloatArray(16)
 
     // 매 프레임 변화 Matrix
     private var scaleMatrix = FloatArray(16)
@@ -100,15 +101,15 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
 
         // 매 프레임 변화 Matrix 초기화
         scaleMatrix[0] = 1.001f; scaleMatrix[5] = 1.002f; scaleMatrix[10] = 1.001f; scaleMatrix[15] = 1f;
-        rotationMatrix[0] = cos(0.0139626f); rotationMatrix[2] = sin(0.0139626f); rotationMatrix[5] = 1f; rotationMatrix[8] = -sin(0.0139626f); rotationMatrix[10] = cos(0.0139626f); rotationMatrix[15] = 1f;
+        rotationMatrix[0] = cos(Math.toRadians(0.8).toFloat()); rotationMatrix[2] = sin(Math.toRadians(0.8).toFloat()); rotationMatrix[5] = 1f; rotationMatrix[8] = -sin(Math.toRadians(0.8).toFloat()); rotationMatrix[10] = cos(Math.toRadians(0.8).toFloat()); rotationMatrix[15] = 1f;
     }
 
     override fun onDrawFrame(p0: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
 
         //P. 아래 구현한 mySetLookAtM function 으로 수정
-        // Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
         mySetLookAtM(viewMatrix, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1f, 0f)
+        // Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
 
         /**
          * 오른쪽 행렬부터 곱하고, 왼쪽 행렬을 곱해서 결과값을 전달함, 오른쪽에서 왼쪽으로 읽는다 생각하면 될듯?
@@ -116,6 +117,7 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
          */
         //P. 각 object 별 매 프레임 변화 matrix 와 model matrix 를 multiply
         // Cube
+        // 어차피 높이가 1인 Cube이기 때문에, 누적된 Scale 변화가 3일 때, 높이가 3임
         if(cubeMatrix[5] < 3.0f)
         {
             Matrix.multiplyMM(cubeMatrix, 0, scaleMatrix, 0, cubeMatrix, 0)
@@ -132,20 +134,22 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
          * 두 번째는 그렇게 옮겨온 Objec를 Frustum Space로 옮기는 Projection Transform (결과값 = MVP Matrix), 참고로 Frustum의 의미는 '절두체'이고, 그 강의에서 자주 본 형태를 말하는겅
          * Object Space에서 World Space로 옮기는 World Transform도 있지만, 그건 초기화에서 이미 했고 편의상 그냥 표시함
          */
+        // C.
         // Cube
-        Matrix.multiplyMM(cubeMVMatrix, 0, viewMatrix, 0, cubeMatrix, 0)
-        Matrix.multiplyMM(cubeMVPMatrix, 0, projectionMatrix, 0, cubeMVMatrix, 0)
+        // Matrix.multiplyMM(cubeMVMatrix, 0, viewMatrix, 0, cubeMatrix, 0)
+        // Matrix.multiplyMM(cubeMVPMatrix, 0, projectionMatrix, 0, cubeMVMatrix, 0)
+        Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
         // Person
-        Matrix.multiplyMM(personMVMatrix, 0, viewMatrix, 0, personMatrix, 0)
-        Matrix.multiplyMM(personMVPMatrix, 0, projectionMatrix, 0, personMVMatrix, 0)
+        // Matrix.multiplyMM(personMVMatrix, 0, viewMatrix, 0, personMatrix, 0)
+        // Matrix.multiplyMM(personMVPMatrix, 0, projectionMatrix, 0, personMVMatrix, 0)
         // Teapot
-        Matrix.multiplyMM(teapotMVMatrix, 0, viewMatrix, 0, teapotMatrix, 0)
-        Matrix.multiplyMM(teapotMVPMatrix, 0, projectionMatrix, 0, teapotMVMatrix, 0)
+        // Matrix.multiplyMM(teapotMVMatrix, 0, viewMatrix, 0, teapotMatrix, 0)
+        // Matrix.multiplyMM(teapotMVPMatrix, 0, projectionMatrix, 0, teapotMVMatrix, 0)
 
         //P. object draw
-        cube.draw(cubeMVPMatrix)
-        person.draw(personMVPMatrix)
-        teapot.draw(teapotMVPMatrix)
+        cube.draw(cubeMatrix, vpMatrix)
+        person.draw(personMatrix, vpMatrix)
+        teapot.draw(teapotMatrix, vpMatrix)
     }
 
     override fun onSurfaceChanged(p0: GL10?, width: Int, height: Int) {
@@ -289,6 +293,7 @@ fun myFrustumM(tempMatrix: FloatArray, aspect: Float, fov: Float, near: Float, f
      * 그게 (Clip / W Clip)이다 = 이러면 homogeneous 값 W가 다시 1이 되고,
      * Z가 컸던 애들 = 멀리 존재하던 애들의 Vertex 크기가 줄어든다 = 원근감에 맞게 NDC 공간으로 뿌려진다.
      * 참고 : http://www.songho.ca/opengl/gl_projectionmatrix.html#perspective
+     * 조교님께 여쭤보니까 하는 곳마다 조금씩 다르다고 한다.
      */
 }
 
@@ -297,29 +302,15 @@ fun myFrustumM(tempMatrix: FloatArray, aspect: Float, fov: Float, near: Float, f
 class Object(context: Context, fileName: String) {
 
     //P. 아래 shader code string 지우고, res/raw 에 위치한 vertex.glsl , fragment.glsl 로드해서 vertexShaderCode, fragmentShaderCode 에 넣기
-    private val vertexShaderCode =
-            "uniform mat4 uMVPMatrix;" +
-                    "attribute vec4 vPosition;" +
-                    "void main() {" +
-                    "  gl_Position = uMVPMatrix * vPosition;" +
-                    "}"
-
-    private val fragmentShaderCode =
-            "precision mediump float;" +
-                    "uniform vec4 vColor;" +
-                    "void main() {" +
-                    "  gl_FragColor = vColor;" +
-                    "}"
-
-    // 여기서부터 오류임
-    private val idVertex = context.resources.getIdentifier("res/vertex.glsl", null, context.packageName)
-    private val idFragment = context.resources.getIdentifier("res/fragment.glsl", null, context.packageName)
+    // init 안에 있습니다.
 
     //P. model matrix handle 변수 추가 선언
     private var vPMatrixHandle: Int = 0
-    private var modelMatrixHandle: String = fileName
+    private var positionHandle: Int = 0
+    private var mColorHandle: Int = 0
+    private var modelMatrixHandle: Int = 0
 
-    val color = floatArrayOf(1.0f, 0.980392f, 0.980392f, 0.3f)
+    private val color = floatArrayOf(1.0f, 0.980392f, 0.980392f, 0.3f)
 
     private var mProgram: Int
 
@@ -329,12 +320,43 @@ class Object(context: Context, fileName: String) {
     private lateinit var facesBuffer: ShortBuffer
 
     init {
+        // vertex.glsl을 읽어온다.
+        val shaderVertex = StringBuilder()
+        try {
+            // resource 폴더는 ID로 파일을 관리한다.
+            val vertexReader = BufferedReader(InputStreamReader(context.resources.openRawResource(R.raw.vertex)))
+            var vertexLine = vertexReader.readLine()
+            while (vertexLine != null)
+            {
+                shaderVertex.append(vertexLine).append("\n")
+                vertexLine = vertexReader.readLine()
+            }
+            vertexReader.close()
+        } catch (e: Exception) {
+            Log.e("file_read", e.message.toString())
+        }
 
-        val tempVertexShaderCode = loadFile(context, idVertex)
-        val tempFragmentShaderCode = loadFile(context, idFragment)
+        // fragment.glsl을 읽어온다.
+        val shaderFragment = StringBuilder()
+        try {
+            val fragmentReader = BufferedReader(InputStreamReader(context.resources.openRawResource(R.raw.fragment)))
+            var fragmentLine = fragmentReader.readLine()
+            while (fragmentLine != null)
+            {
+                shaderFragment.append(fragmentLine).append("\n")
+                fragmentLine = fragmentReader.readLine()
+            }
+            fragmentReader.close()
+        } catch (e: Exception) {
+            Log.e("file_read", e.message.toString())
+        }
+
+        // vertexShaderCode, fragmentShaderCode에 넣어주기
+        val vertexShaderCode = shaderVertex.toString()
+        val fragmentShaderCode = shaderFragment.toString()
 
         try {
-            val scanner = Scanner(context.assets.open(modelMatrixHandle))
+            val scanner = Scanner(context.assets.open(fileName))
             while (scanner.hasNextLine()) {
                 val line = scanner.nextLine()
                 if (line.startsWith("v  ")) {
@@ -379,8 +401,8 @@ class Object(context: Context, fileName: String) {
             Log.e("file_read", e.message.toString())
         }
 
-        val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, tempVertexShaderCode)
-        val fragmentShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, tempFragmentShaderCode)
+        val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
+        val fragmentShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
 
         mProgram = GLES20.glCreateProgram().also {
             GLES20.glAttachShader(it, vertexShader)
@@ -391,37 +413,28 @@ class Object(context: Context, fileName: String) {
 
     val COORDS_PER_VERTEX = 3
 
-    private var positionHandle: Int = 0
-    private var mColorHandle: Int = 0
-
     private val vertexStride: Int = COORDS_PER_VERTEX * 4
 
     //PP. cube, person, teapot 의 world transform 및 매 프레임 변화를 반영할 수 있는 draw function 으로 수정
-    fun draw(mvpMatrix: FloatArray) {
+    fun draw(modelMatrix: FloatArray, vpMatrix: FloatArray) {
         GLES20.glUseProgram(mProgram)
 
-        positionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition").also {
-            GLES20.glEnableVertexAttribArray(it)
-            GLES20.glVertexAttribPointer(
-                    it,
-                    COORDS_PER_VERTEX,
-                    GLES20.GL_FLOAT,
-                    false,
-                    vertexStride,
-                    verticesBuffer
-            )
+        positionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition")
+        GLES20.glEnableVertexAttribArray(positionHandle)
+        GLES20.glVertexAttribPointer(positionHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, vertexStride, verticesBuffer)
 
-            mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor").also { colorHandle ->
-                GLES20.glUniform4fv(colorHandle, 1, color, 0)
-            }
+        modelMatrixHandle = GLES20.glGetAttribLocation(mProgram, "uMFMatrix")
+        GLES20.glUniformMatrix4fv(modelMatrixHandle, 1, false, modelMatrix, 0)
 
-            vPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix")
-            GLES20.glUniformMatrix4fv(vPMatrixHandle, 1, false, mvpMatrix, 0)
+        mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor")
+        GLES20.glUniform4fv(mColorHandle, 1, color, 0)
 
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, faces.size, GLES20.GL_UNSIGNED_SHORT, facesBuffer)
+        vPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uVPMatrix")
+        GLES20.glUniformMatrix4fv(vPMatrixHandle, 1, false, vpMatrix, 0)
 
-            GLES20.glDisableVertexAttribArray(it)
-        }
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, faces.size, GLES20.GL_UNSIGNED_SHORT, facesBuffer)
+
+        GLES20.glDisableVertexAttribArray(positionHandle)
     }
 
     private fun loadShader(type: Int, shaderCode: String): Int {
@@ -429,19 +442,5 @@ class Object(context: Context, fileName: String) {
             GLES20.glShaderSource(shader, shaderCode)
             GLES20.glCompileShader(shader)
         }
-    }
-
-    private fun loadFile(context: Context, fileID: Int): String {
-        lateinit var tempLine: String
-        val scanner = Scanner(context.resources.openRawResource(fileID))
-        try {
-            while (scanner.hasNextLine()) {
-                val line = scanner.nextLine()
-                tempLine += line
-            }
-        } catch (e: Exception) {
-            Log.e("file_read", e.message.toString())
-        }
-        return tempLine
     }
 }

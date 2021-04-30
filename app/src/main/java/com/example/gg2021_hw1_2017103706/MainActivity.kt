@@ -58,16 +58,13 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
     // Model Matrix
     // Cube.OBJ
     private var cubeMatrix = FloatArray(16)
-    // private var cubeMVMatrix = FloatArray(16)
-    // private var cubeMVPMatrix = FloatArray(16)
+    private var cubeMVPMatrix = FloatArray(16)
     // Person.OBJ
     private var personMatrix = FloatArray(16)
-    // private var personMVMatrix = FloatArray(16)
-    // private var personMVPMatrix = FloatArray(16)
+    private var personMVPMatrix = FloatArray(16)
     // Teapot.OBJ
     private var teapotMatrix = FloatArray(16)
-    // private var teapotMVMatrix = FloatArray(16)
-    // private var teapotMVPMatrix = FloatArray(16)
+    private var teapotMVPMatrix = FloatArray(16)
 
     // 매 프레임 변화 Matrix
     private var scaleMatrix = FloatArray(16)
@@ -77,9 +74,6 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
     private lateinit var cube: Object
     private lateinit var person: Object
     private lateinit var teapot: Object
-
-    //C.테스트용 Identity Matrix
-    private val identityMatrix = FloatArray(16)
 
     override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
         GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
@@ -109,7 +103,6 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
 
         //P. 아래 구현한 mySetLookAtM function 으로 수정
         mySetLookAtM(viewMatrix, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1f, 0f)
-        // Matrix.setLookAtM(viewMatrix, 0, 1.5f, 1.5f, -9f, 0f, 0f, 0f, 0f, 1.0f, 0.0f)
 
         /**
          * 오른쪽 행렬부터 곱하고, 왼쪽 행렬을 곱해서 결과값을 전달함, 오른쪽에서 왼쪽으로 읽는다 생각하면 될듯?
@@ -134,17 +127,7 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
          * 두 번째는 그렇게 옮겨온 Objec를 Frustum Space로 옮기는 Projection Transform (결과값 = MVP Matrix), 참고로 Frustum의 의미는 '절두체'이고, 그 강의에서 자주 본 형태를 말하는겅
          * Object Space에서 World Space로 옮기는 World Transform도 있지만, 그건 초기화에서 이미 했고 편의상 그냥 표시함
          */
-        // C.
-        // Cube
-        // Matrix.multiplyMM(cubeMVMatrix, 0, viewMatrix, 0, cubeMatrix, 0)
-        // Matrix.multiplyMM(cubeMVPMatrix, 0, projectionMatrix, 0, cubeMVMatrix, 0)
         Matrix.multiplyMM(vpMatrix, 0, projectionMatrix, 0, viewMatrix, 0)
-        // Person
-        // Matrix.multiplyMM(personMVMatrix, 0, viewMatrix, 0, personMatrix, 0)
-        // Matrix.multiplyMM(personMVPMatrix, 0, projectionMatrix, 0, personMVMatrix, 0)
-        // Teapot
-        // Matrix.multiplyMM(teapotMVMatrix, 0, viewMatrix, 0, teapotMatrix, 0)
-        // Matrix.multiplyMM(teapotMVPMatrix, 0, projectionMatrix, 0, teapotMVMatrix, 0)
 
         //P. object draw
         cube.draw(cubeMatrix, vpMatrix)
@@ -159,7 +142,6 @@ class MyGLRenderer(context: Context): GLSurfaceView.Renderer{
 
         //P.  아래 구현한 myFrustumM function 으로 수정
         myFrustumM(projectionMatrix, ratio, 60f, 2f, 12f)
-        // Matrix.frustumM(projectionMatrix, 0, -ratio, ratio, -1f, 1f, 2f, 12f)
     }
 }
 
@@ -207,7 +189,6 @@ fun mySetLookAtM(tempMatrix: FloatArray, eyeX: Float, eyeY: Float, eyeZ: Float, 
      * 찾아보면 화면으로 나오는 방향이 n이 맞긴함
      */
     // Basis u 만들기
-    //
     // n과 Up을 외적
     var uX = upY*nZ - upZ*nY
     var uY = upZ*nX - upX*nZ
@@ -328,6 +309,7 @@ class Object(context: Context, fileName: String) {
             var vertexLine = vertexReader.readLine()
             while (vertexLine != null)
             {
+                // if(!vertexLine.startsWith("//")) 주석 알아서 처리해줌
                 shaderVertex.append(vertexLine).append("\n")
                 vertexLine = vertexReader.readLine()
             }
@@ -419,11 +401,17 @@ class Object(context: Context, fileName: String) {
     fun draw(modelMatrix: FloatArray, vpMatrix: FloatArray) {
         GLES20.glUseProgram(mProgram)
 
+        /**
+         * Attribute는 정점의 데이터, 위치라든지, normal이라든지...
+         * Uniform은 그 정점에 계산될 데이터들
+         * Varying은 data which vertex shader send to fragment shader
+         */
+
         positionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition")
         GLES20.glEnableVertexAttribArray(positionHandle)
         GLES20.glVertexAttribPointer(positionHandle, COORDS_PER_VERTEX, GLES20.GL_FLOAT, false, vertexStride, verticesBuffer)
 
-        modelMatrixHandle = GLES20.glGetAttribLocation(mProgram, "uMFMatrix")
+        modelMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMFMatrix")
         GLES20.glUniformMatrix4fv(modelMatrixHandle, 1, false, modelMatrix, 0)
 
         mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor")

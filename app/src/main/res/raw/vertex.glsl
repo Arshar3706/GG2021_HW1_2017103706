@@ -1,3 +1,5 @@
+//p. vertex.glsl code 작성
+
 uniform mat4 uVPMatrix;
 uniform mat4 uMFMatrix;
 attribute vec4 vPosition;
